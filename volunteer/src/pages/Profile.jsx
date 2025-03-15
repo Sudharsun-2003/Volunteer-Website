@@ -1,72 +1,146 @@
-import React, { useState } from 'react';
-import { FiUser, FiMail, FiMapPin, FiAward, FiClock, FiHeart, FiCalendar, FiEdit, FiMenu, FiX, FiChevronRight, FiGithub, FiLinkedin, FiTwitter } from 'react-icons/fi';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { FiUser, FiMail, FiMapPin, FiAward, FiClock, FiHeart, FiCalendar, FiEdit, FiMenu, FiX, FiChevronRight } from 'react-icons/fi';
 
 const Profile = () => {
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [profile] = useState({
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    location: 'New York, NY',
-    bio: 'Passionate about helping others and making a difference in the community.',
-    skills: ['Teaching', 'Gardening', 'Event Planning', 'Leadership', 'Communication', 'Project Management'],
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [profile, setProfile] = useState({
+    name: '',
+    emailid: '',
+    district: '',
+    skill: '',
+    userid: '',
+    created_at: '',
     stats: {
-      totalHours: 150,
-      opportunitiesCompleted: 12,
-      organizationsHelped: 5,
-      upcomingEvents: 3
+      totalHours: 0,
+      opportunitiesCompleted: 0,
+      organizationsHelped: 0,
+      upcomingEvents: 0
     },
-    achievements: [
-      { id: 1, title: '100 Hours Club', description: 'Completed 100+ volunteer hours', date: '2024-02-01' },
-      { id: 2, title: 'Community Leader', description: 'Led 5+ community events', date: '2024-01-15' },
-      { id: 3, title: 'First Milestone', description: 'Completed first volunteer opportunity', date: '2023-12-01' }
-    ],
-    completedOpportunities: [
-      {
-        id: 1,
-        title: 'Community Garden Helper',
-        organization: 'Green Earth Initiative',
-        date: '2024-03-15',
-        hours: 4,
-        impact: 'Helped maintain community garden serving 100+ families'
-      },
-      {
-        id: 2,
-        title: 'Food Bank Volunteer',
-        organization: 'Local Food Bank',
-        date: '2024-03-10',
-        hours: 3,
-        impact: 'Distributed food to 50+ families in need'
-      }
-    ],
-    upcomingOpportunities: [
-      {
-        id: 1,
-        title: 'Youth Mentoring Program',
-        organization: 'Education First',
-        date: '2024-04-01',
-        duration: '2 hours',
-        status: 'Confirmed'
-      },
-      {
-        id: 2,
-        title: 'Beach Cleanup Drive',
-        organization: 'Ocean Warriors',
-        date: '2024-04-15',
-        duration: '3 hours',
-        status: 'Pending'
-      }
-    ]
+    achievements: [],
+    completedOpportunities: [],
+    upcomingOpportunities: []
   });
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        // Get token and userId from localStorage
+        const token = localStorage.getItem('token');
+        const userId = localStorage.getItem('userId');
+        
+        console.log('Token:', token);
+        console.log('User ID:', userId);
+        
+        if (!token || !userId) {
+          console.log('No token or userId found in localStorage');
+          navigate('/login');
+          return;
+        }
+        
+        // Fetch user data from API
+        const url = `http://localhost:5000/api/users/${userId}`;
+        console.log('Fetching profile from:', url);
+        
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('API error response:', errorData);
+          throw new Error(`Failed to fetch profile data: ${errorData.message || response.statusText}`);
+        }
+        
+        const userData = await response.json();
+        console.log('User data received:', userData);
+        
+        // Format the data for our profile component
+        setProfile({
+          ...userData,
+          stats: {
+            totalHours: 0,
+            opportunitiesCompleted: 0,
+            organizationsHelped: 0,
+            upcomingEvents: 0
+          },
+          achievements: [],
+          completedOpportunities: [],
+          upcomingOpportunities: []
+        });
+        
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching profile:', err);
+        setError(err.message);
+        setLoading(false);
+      }
+    };
+    
+    fetchUserProfile();
+  }, [navigate]);
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
+  const formatDate = (dateString) => {
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+  };
+
+  // Add logout function
+  const handleLogout = () => {
+    // Clear all authentication data from localStorage
+    localStorage.removeItem('token');
+    localStorage.removeItem('userId');
+    
+    // Any other auth-related items should be cleared here
+    
+    console.log('User logged out');
+    
+    // Navigate to login page
+    navigate('/login');
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center max-w-md p-6 bg-white rounded-lg shadow-md">
+          <p className="text-red-500 text-lg mb-4">Error loading profile</p>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={() => navigate('/login')} 
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Back to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar - Now collapsible */}
-        <div className={`bg-white  transition-all duration-300 ease-in-out ${sidebarOpen ? 'w-64' : 'w-20'} absolute h-screen z-10`}>
+        <div className={`bg-white transition-all duration-300 ease-in-out ${sidebarOpen ? 'w-64' : 'w-20'} absolute h-screen z-10`}>
           <div className={`p-4 ${sidebarOpen ? 'px-6' : 'px-3'}`}>
             <div className="flex justify-between items-center mb-6">
               {sidebarOpen && <h2 className="text-lg font-semibold text-gray-800">Volunteer Connect</h2>}
@@ -80,15 +154,15 @@ const Profile = () => {
             
             <div className={`flex flex-col ${sidebarOpen ? 'items-center' : 'items-center'}`}>
               <div className={`rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold ${sidebarOpen ? 'h-24 w-24 text-xl' : 'h-12 w-12 text-sm'}`}>
-                {profile.name.split(' ').map(n => n[0]).join('')}
+                {profile.name ? profile.name.split(' ').map(n => n[0]).join('').toUpperCase() : ''}
               </div>
               {sidebarOpen && (
                 <>
                   <h2 className="mt-3 text-lg font-bold text-gray-900">{profile.name}</h2>
-                  <p className="text-xs text-gray-600 mb-1">{profile.email}</p>
+                  <p className="text-xs text-gray-600 mb-1">{profile.emailid}</p>
                   <div className="flex items-center text-xs text-gray-500">
                     <FiMapPin className="mr-1" size={10} />
-                    <span>{profile.location}</span>
+                    <span>{profile.district}</span>
                   </div>
                 </>
               )}
@@ -111,6 +185,14 @@ const Profile = () => {
                 <button className={`w-full flex items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md ${!sidebarOpen && 'justify-center'}`}>
                   <FiCalendar className={sidebarOpen ? 'mr-3' : ''} />
                   {sidebarOpen && <span>Calendar</span>}
+                </button>
+                {/* Add logout to sidebar */}
+                <button 
+                  className={`w-full flex items-center px-3 py-2 text-red-600 hover:bg-red-50 rounded-md ${!sidebarOpen && 'justify-center'}`}
+                  onClick={handleLogout}
+                >
+                  <FiX className={sidebarOpen ? 'mr-3' : ''} />
+                  {sidebarOpen && <span>Logout</span>}
                 </button>
               </div>
             </nav>
@@ -189,24 +271,45 @@ const Profile = () => {
                       View more <FiChevronRight size={14} className="ml-1" />
                     </button>
                   </div>
-                  <p className="text-gray-600 text-sm">{profile.bio}</p>
+                  <p className="text-gray-600 text-sm">
+                    Volunteer since {formatDate(profile.created_at)}
+                  </p>
                   
                   <div className="mt-5">
                     <div className="flex justify-between items-center mb-3">
                       <h3 className="text-base font-semibold text-gray-900">Skills & Expertise</h3>
                       <button className="text-blue-600 hover:text-blue-800 text-xs flex items-center">
-                        View all <FiChevronRight size={14} className="ml-1" />
+                        Add skills <FiChevronRight size={14} className="ml-1" />
                       </button>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {profile.skills.map((skill, index) => (
-                        <span
-                          key={index}
-                          className="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100"
-                        >
-                          {skill}
-                        </span>
-                      ))}
+                      <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                        {profile.skill}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-5">
+                    <div className="flex justify-between items-center mb-3">
+                      <h3 className="text-base font-semibold text-gray-900">User Information</h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-xs text-gray-500">User ID</p>
+                        <p className="text-sm font-medium">{profile.userid}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Email</p>
+                        <p className="text-sm font-medium">{profile.emailid}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">District</p>
+                        <p className="text-sm font-medium">{profile.district}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Joined</p>
+                        <p className="text-sm font-medium">{formatDate(profile.created_at)}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -215,26 +318,35 @@ const Profile = () => {
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="text-base font-semibold text-gray-900">Recent Opportunities</h3>
                     <button className="text-blue-600 hover:text-blue-800 text-xs flex items-center">
-                      View all <FiChevronRight size={14} className="ml-1" />
+                      Find opportunities <FiChevronRight size={14} className="ml-1" />
                     </button>
                   </div>
-                  <div className="space-y-3">
-                    {profile.completedOpportunities.map((opportunity) => (
-                      <div key={opportunity.id} className="border-b pb-3 last:border-0 last:pb-0">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-900">{opportunity.title}</h4>
-                            <p className="text-xs text-gray-600">{opportunity.organization}</p>
-                            <p className="text-xs text-gray-500 mt-1">{opportunity.impact}</p>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-xs font-medium text-gray-900">{opportunity.hours} hours</span>
-                            <p className="text-xs text-gray-500">{opportunity.date}</p>
+                  {profile.completedOpportunities.length > 0 ? (
+                    <div className="space-y-3">
+                     {profile.completedOpportunities.map((opportunity) => (
+                        <div key={opportunity.id} className="border-b pb-3 last:border-0 last:pb-0">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="text-sm font-medium text-gray-900">{opportunity.title}</h4>
+                              <p className="text-xs text-gray-600">{opportunity.organization}</p>
+                              <p className="text-xs text-gray-500 mt-1">{opportunity.impact}</p>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-xs font-medium text-gray-900">{opportunity.hours} hours</span>
+                              <p className="text-xs text-gray-500">{opportunity.date}</p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <p className="text-gray-500 text-sm">No completed opportunities yet.</p>
+                      <button className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700">
+                        Find your first opportunity
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -247,24 +359,34 @@ const Profile = () => {
                       View all <FiChevronRight size={14} className="ml-1" />
                     </button>
                   </div>
-                  <div className="space-y-3">
-                    {profile.upcomingOpportunities.map((opportunity) => (
-                      <div key={opportunity.id} className="border-b pb-3 last:border-0 last:pb-0">
-                        <h4 className="text-sm font-medium text-gray-900">{opportunity.title}</h4>
-                        <p className="text-xs text-gray-600">{opportunity.organization}</p>
-                        <div className="mt-1.5 flex justify-between items-center">
-                          <span className="text-xs text-gray-500">{opportunity.date}</span>
-                          <span className={`text-xs px-2 py-0.5 rounded ${
-                            opportunity.status === 'Confirmed' 
-                              ? 'bg-green-50 text-green-700 border border-green-100' 
-                              : 'bg-yellow-50 text-yellow-700 border border-yellow-100'
-                          }`}>
-                            {opportunity.status}
-                          </span>
+                  
+                  {profile.upcomingOpportunities.length > 0 ? (
+                    <div className="space-y-3">
+                      {profile.upcomingOpportunities.map((opportunity) => (
+                        <div key={opportunity.id} className="border-b pb-3 last:border-0 last:pb-0">
+                          <h4 className="text-sm font-medium text-gray-900">{opportunity.title}</h4>
+                          <p className="text-xs text-gray-600">{opportunity.organization}</p>
+                          <div className="mt-1.5 flex justify-between items-center">
+                            <span className="text-xs text-gray-500">{opportunity.date}</span>
+                            <span className={`text-xs px-2 py-0.5 rounded ${
+                              opportunity.status === 'Confirmed' 
+                                ? 'bg-green-50 text-green-700 border border-green-100' 
+                                : 'bg-yellow-50 text-yellow-700 border border-yellow-100'
+                            }`}>
+                              {opportunity.status}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <p className="text-gray-500 text-sm">No upcoming events.</p>
+                      <button className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700">
+                        Browse opportunities
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-white rounded-lg shadow-sm p-5">
@@ -274,32 +396,61 @@ const Profile = () => {
                       View all <FiChevronRight size={14} className="ml-1" />
                     </button>
                   </div>
-                  <div className="space-y-3">
-                    {profile.achievements.map((achievement) => (
-                      <div key={achievement.id} className="border-b pb-3 last:border-0 last:pb-0">
-                        <div className="flex items-start">
-                          <div className="p-1.5 bg-purple-50 rounded-full mr-2.5 border border-purple-100">
-                            <FiAward className="text-purple-600" size={14} />
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-900">{achievement.title}</h4>
-                            <p className="text-xs text-gray-600">{achievement.description}</p>
-                            <p className="text-xs text-gray-500 mt-1">{achievement.date}</p>
+                  
+                  {profile.achievements.length > 0 ? (
+                    <div className="space-y-3">
+                      {profile.achievements.map((achievement) => (
+                        <div key={achievement.id} className="border-b pb-3 last:border-0 last:pb-0">
+                          <div className="flex items-start">
+                            <div className="p-1.5 bg-purple-50 rounded-full mr-2.5 border border-purple-100">
+                              <FiAward className="text-purple-600" size={14} />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-medium text-gray-900">{achievement.title}</h4>
+                              <p className="text-xs text-gray-600">{achievement.description}</p>
+                              <p className="text-xs text-gray-500 mt-1">{achievement.date}</p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <p className="text-gray-500 text-sm">Complete volunteer opportunities to earn achievements!</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-lg shadow-sm p-5">
+                  <h3 className="text-base font-semibold text-gray-900 mb-3">Account Details</h3>
+                  <div className="space-y-2">
+                    <div>
+                      <p className="text-xs text-gray-500">Member Since</p>
+                      <p className="text-sm font-medium">{formatDate(profile.created_at)}</p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-xs text-gray-500">Last Updated</p>
+                      <p className="text-sm font-medium">{formatDate(profile.updated_at)}</p>
+                    </div>
+                    
+                    <div className="pt-3">
+                      <button 
+                        className="w-full py-2 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
+                        onClick={handleLogout}
+                      >
+                        Sign out
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </main>
-          
-      
         </div>
       </div>
     </div>
   );
 };
 
-export default Profile; 
+export default Profile;
