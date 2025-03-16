@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaMapMarkerAlt, FaCalendarAlt, FaBuilding, FaUsers, FaSearch, FaClock, FaHeart, FaPlus, FaTimes } from 'react-icons/fa';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 const PostOpportunityModal = ({ isOpen, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
@@ -37,7 +38,11 @@ const PostOpportunityModal = ({ isOpen, onClose, onSubmit }) => {
         skills: formData.skills // Server will handle this as a string
       };
       
-      const response = await axios.post('http://localhost:5000/api/opportunities/', formattedData);
+      const response = await axios.post('http://localhost:5000/api/opportunities/', formattedData, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
       onSubmit(response.data);
       onClose();
     } catch (error) {
@@ -292,24 +297,65 @@ const PostOpportunityModal = ({ isOpen, onClose, onSubmit }) => {
 
 const ApplicationModal = ({ isOpen, onClose, opportunity }) => {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    experience: '',
-    message: ''
+    fullName: '',
+    phoneNumber: '',
+    relevantExperience: '',
+    additionalMessage: ''
   });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Get the user ID from localStorage
+  const userId = localStorage.getItem('userId');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    
     try {
-      await axios.post(`http://localhost:5000/api/opportunities/${opportunity._id}/apply`, formData);
+      // Prepare the data according to the required format
+      const applicationData = {
+        opportunityId: opportunity._id,
+        userId: userId,
+        fullName: formData.fullName,
+        phoneNumber: formData.phoneNumber,
+        relevantExperience: formData.relevantExperience,
+        additionalMessage: formData.additionalMessage
+      };
+      
+      // Send the application to the API with the auth token
+      const response = await axios.post('http://localhost:5000/api/applications/apply', applicationData, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
       alert('Application submitted successfully!');
       onClose();
     } catch (error) {
       console.error('Error submitting application:', error);
-      alert('Failed to submit application. Please try again.');
+      setError('Failed to submit application. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
+
+  const handleReset = () => {
+    setFormData({
+      fullName: '',
+      phoneNumber: '',
+      relevantExperience: '',
+      additionalMessage: ''
+    });
+    setError(null);
+  };
+
+  React.useEffect(() => {
+    if (!isOpen) {
+      handleReset();
+    }
+  }, [isOpen]);
 
   if (!isOpen || !opportunity) return null;
 
@@ -319,12 +365,19 @@ const ApplicationModal = ({ isOpen, onClose, opportunity }) => {
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+          disabled={submitting}
         >
           <FaTimes size={24} />
         </button>
         <h2 className="text-2xl font-bold mb-2">Apply for Opportunity</h2>
         <p className="text-gray-600 mb-6">{opportunity.title} - {opportunity.organization}</p>
         
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
@@ -332,154 +385,257 @@ const ApplicationModal = ({ isOpen, onClose, opportunity }) => {
               type="text"
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              value={formData.fullName}
+              onChange={(e) => setFormData({...formData, fullName: e.target.value})}
+              disabled={submitting}
             />
           </div>
+          
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-            <input
-              type="email"
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              value={formData.email}
-              onChange={(e) => setFormData({...formData, email: e.target.value})}
-            />
-          </div>
-          <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
             <input
               type="tel"
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              value={formData.phone}
-              onChange={(e) => setFormData({...formData, phone: e.target.value})}
+              value={formData.phoneNumber}
+              onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
+              disabled={submitting}
             />
           </div>
+          
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Relevant Experience</label>
             <textarea
               rows={3}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              value={formData.experience}
-              onChange={(e) => setFormData({...formData, experience: e.target.value})}
+              value={formData.relevantExperience}
+              onChange={(e) => setFormData({...formData, relevantExperience: e.target.value})}
+              disabled={submitting}
             />
           </div>
+          
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Additional Message</label>
             <textarea
               rows={3}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              value={formData.message}
-              onChange={(e) => setFormData({...formData, message: e.target.value})}
+              value={formData.additionalMessage}
+              onChange={(e) => setFormData({...formData, additionalMessage: e.target.value})}
+              disabled={submitting}
             />
           </div>
-          <button
-            type="submit"
-            className="w-full px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200"
-          >
-            Submit Application
-          </button>
+          
+          <div className="flex space-x-4">
+            <button
+              type="submit"
+              className="flex-1 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:bg-blue-300"
+              disabled={submitting}
+            >
+              {submitting ? 'Submitting...' : 'Submit Application'}
+            </button>
+            <button
+              type="button"
+              onClick={handleReset}
+              className="px-6 py-3 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 transition-colors duration-200 disabled:bg-gray-100"
+              disabled={submitting}
+            >
+              Reset
+            </button>
+          </div>
         </form>
       </div>
     </div>
   );
 };
 
-const Opportunities = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
-  const [selectedOpportunity, setSelectedOpportunity] = useState(null);
+const OpportunityCard = ({ opportunity, onApply, isLoggedIn }) => {
+  const navigate = useNavigate();
+
+  const handleApplyClick = () => {
+    if (isLoggedIn) {
+      onApply(opportunity);
+    } else {
+      // Redirect to login page if not logged in
+      navigate('/login');
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-md overflow-hidden transition-transform duration-300 hover:shadow-lg hover:scale-[1.02]">
+      <div className="h-48 overflow-hidden">
+        <img 
+          src={opportunity.imageUrl || 'https://via.placeholder.com/400x200?text=Volunteer+Opportunity'} 
+          alt={opportunity.title}
+          className="w-full h-full object-cover"
+        />
+      </div>
+      <div className="p-6">
+        <div className="flex items-center mb-2">
+          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+            {opportunity.category}
+          </span>
+          <span className="ml-auto flex items-center text-gray-500 text-sm">
+            <FaUsers className="mr-1" />
+            {opportunity.volunteers} needed
+          </span>
+        </div>
+        <h3 className="text-xl font-bold mb-2">{opportunity.title}</h3>
+        <p className="flex items-center text-gray-600 mb-2">
+          <FaBuilding className="mr-2" />
+          {opportunity.organization}
+        </p>
+        <p className="flex items-center text-gray-600 mb-2">
+          <FaMapMarkerAlt className="mr-2" />
+          {opportunity.location}
+        </p>
+        <p className="flex items-center text-gray-600 mb-2">
+          <FaCalendarAlt className="mr-2" />
+          {new Date(opportunity.date).toLocaleDateString()}
+        </p>
+        <p className="flex items-center text-gray-600 mb-4">
+          <FaClock className="mr-2" />
+          {opportunity.start_time} - {opportunity.end_time} ({opportunity.duration} hrs)
+        </p>
+        <p className="text-gray-700 mb-4 line-clamp-3">{opportunity.description}</p>
+        <div className="flex space-x-2 mb-4">
+          {opportunity.skills.split(',').map((skill, index) => (
+            <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
+              {skill.trim()}
+            </span>
+          ))}
+        </div>
+        <div className="flex space-x-2">
+          <button
+            onClick={handleApplyClick}
+            className="flex-1 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center justify-center"
+          >
+            <FaPlus className="mr-2" /> Apply Now
+          </button>
+          <button className="p-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200">
+            <FaHeart />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const OpportunitiesPage = () => {
+  const navigate = useNavigate();
   const [opportunities, setOpportunities] = useState([]);
+  const [filteredOpportunities, setFilteredOpportunities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
-  const categories = ['All', 'Environment', 'Community', 'Education', 'Healthcare', 'Social Work'];
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [showPostModal, setShowPostModal] = useState(false);
+  const [selectedOpportunity, setSelectedOpportunity] = useState(null);
+  const [showApplicationModal, setShowApplicationModal] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
+    // Check if user is logged in
+    const token = localStorage.getItem('token');
+    setIsLoggedIn(!!token);
+    
     fetchOpportunities();
   }, []);
+
+  useEffect(() => {
+    filterOpportunities();
+  }, [searchTerm, categoryFilter, opportunities]);
 
   const fetchOpportunities = async () => {
     try {
       setLoading(true);
       const response = await axios.get('http://localhost:5000/api/opportunities/');
       setOpportunities(response.data);
-      setLoading(false);
+      setFilteredOpportunities(response.data);
     } catch (error) {
       console.error('Error fetching opportunities:', error);
       setError('Failed to load opportunities. Please try again later.');
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleAddOpportunity = (newOpportunity) => {
-    setOpportunities([...opportunities, newOpportunity]);
-  };
-
-  const handleApplyClick = (opportunity) => {
-    setSelectedOpportunity(opportunity);
-    setIsApplyModalOpen(true);
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-  };
-
-  const formatSkills = (skills) => {
-    if (typeof skills === 'string') {
-      return skills.split(',').map(skill => skill.trim());
+  const filterOpportunities = () => {
+    let filtered = [...opportunities];
+    
+    // Filter by search term
+    if (searchTerm) {
+      filtered = filtered.filter(
+        item => 
+          item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.organization.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.location.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
-    return Array.isArray(skills) ? skills : [];
+    
+    // Filter by category
+    if (categoryFilter !== 'All') {
+      filtered = filtered.filter(item => item.category === categoryFilter);
+    }
+    
+    setFilteredOpportunities(filtered);
   };
 
-  const filteredOpportunities = opportunities.filter(opp => {
-    const matchesSearch = opp.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         opp.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'All' || opp.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const handleApply = (opportunity) => {
+    if (isLoggedIn) {
+      setSelectedOpportunity(opportunity);
+      setShowApplicationModal(true);
+    } else {
+      // Redirect to login page
+      navigate('/login');
+    }
+  };
+
+  const handlePostOpportunity = () => {
+    if (isLoggedIn) {
+      setShowPostModal(true);
+    } else {
+      // Redirect to login page
+      navigate('/login');
+    }
+  };
+
+  const handleOpportunityAdded = (newOpportunity) => {
+    setOpportunities([...opportunities, newOpportunity]);
+    fetchOpportunities(); // Refresh the list
+  };
+
+  const categories = ['All', 'Environment', 'Community', 'Education', 'Healthcare', 'Social Work'];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      <header className="bg-white">
-        <div className="max-w-7xl mx-auto py-8 px-4">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h1 className="text-4xl font-bold text-gray-900 tracking-tight">
-                Volunteer Opportunities
-              </h1>
-              <p className="mt-2 text-gray-600 max-w-3xl">
-                Make a difference in your community by joining these meaningful volunteer opportunities.
-              </p>
-            </div>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200 shadow-sm hover:shadow-md"
-            >
-              <FaPlus className="mr-2" />
-              Post Opportunity
-            </button>
-          </div>
-          
-          <div className="mt-8 flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
+    <div className="bg-gray-50 min-h-screen">
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex flex-col md:flex-row justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold mb-4 md:mb-0">Volunteer Opportunities</h1>
+          <button
+            onClick={handlePostOpportunity}
+            className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200"
+          >
+            Post New Opportunity
+          </button>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+          <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
+            <div className="flex-1 relative">
               <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search opportunities..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <select
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="py-3 px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
             >
               {categories.map(category => (
                 <option key={category} value={category}>{category}</option>
@@ -487,161 +643,51 @@ const Opportunities = () => {
             </select>
           </div>
         </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto py-12 px-4">
+        
         {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading opportunities...</p>
+          <div className="flex justify-center items-center h-64">
+            <p className="text-xl text-gray-600">Loading opportunities...</p>
           </div>
         ) : error ? (
-          <div className="text-center py-12 text-red-500">
-            <p>{error}</p>
-            <button 
-              onClick={fetchOpportunities}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Try Again
-            </button>
+          <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg">
+            {error}
           </div>
         ) : filteredOpportunities.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="text-gray-400 mb-4">
-              <FaSearch size={48} className="mx-auto" />
-            </div>
-            <h3 className="text-xl font-medium text-gray-900 mb-2">No opportunities found</h3>
-            <p className="text-gray-600">
-              Try adjusting your search or filters to find more opportunities.
-            </p>
+          <div className="bg-gray-50 border border-gray-200 text-gray-700 px-6 py-8 rounded-lg text-center">
+            <p className="text-xl font-medium mb-2">No opportunities found</p>
+            <p className="text-gray-500">Try adjusting your search or filters</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-8">
-            {filteredOpportunities.map((opportunity) => (
-              <div 
-                key={opportunity._id} 
-                className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden border border-gray-100"
-              >
-                <div className="flex flex-col md:flex-row">
-                  <div className="md:w-1/3 h-64 relative group">
-                    <img
-                      src={opportunity.imageUrl}
-                      alt={opportunity.title}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <div className="absolute top-4 left-4">
-                      <span className="inline-block px-3 py-1 text-sm font-medium bg-blue-50 text-blue-700 rounded-full shadow-sm">
-                        {opportunity.category}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="p-8 md:w-2/3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h2 className="text-2xl font-bold text-gray-900 mb-2">{opportunity.title}</h2>
-                        <div className="flex items-center text-gray-700 mb-4">
-                          <FaBuilding className="mr-2" />
-                          <span className="font-medium">{opportunity.organization}</span>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={() => handleApplyClick(opportunity)}
-                        className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors duration-200 shadow-sm hover:shadow-md"
-                      >
-                        Apply Now
-                      </button>
-                    </div>
-
-                    <p className="text-gray-600 mb-6 leading-relaxed">
-                      {opportunity.description}
-                    </p>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-6 border-t border-gray-100">
-                      <div className="flex items-center">
-                        <FaMapMarkerAlt className="text-gray-400 mr-2" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Location</p>
-                          <p className="text-gray-900">{opportunity.location}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center">
-                        <FaCalendarAlt className="text-gray-400 mr-2" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Date</p>
-                          <p className="text-gray-900">{formatDate(opportunity.date)}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center">
-                        <FaClock className="text-gray-400 mr-2" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Duration</p>
-                          <p className="text-gray-900">{opportunity.duration} hours</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center">
-                        <FaUsers className="text-gray-400 mr-2" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Volunteers Needed</p>
-                          <p className="text-gray-900">{opportunity.volunteers}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-6 pt-6 border-t border-gray-100">
-                      <div className="mb-4">
-                        <h3 className="text-sm font-semibold text-gray-900 mb-2">Required Skills</h3>
-                        <div className="flex flex-wrap gap-2">
-                          {formatSkills(opportunity.skills).map((skill, index) => (
-                            <span key={index} className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm hover:bg-gray-200 transition-colors duration-200">
-                              {skill}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="flex items-center">
-                        <FaHeart className="text-red-400 mr-2" />
-                        <p className="text-sm text-gray-700">{opportunity.impact}</p>
-                      </div>
-                    </div>
-                    
-                    {opportunity.address && (
-                      <div className="mt-6 pt-6 border-t border-gray-100">
-                        <h3 className="text-sm font-semibold text-gray-900 mb-2">Complete Address</h3>
-                        <p className="text-gray-700">
-                          {opportunity.address.street}, {opportunity.address.city}, {opportunity.address.district}, {opportunity.address.state}, {opportunity.address.pincode}
-                        </p>
-                      </div>
-                    )}
-                    
-                    <div className="mt-6 pt-6 border-t border-gray-100">
-                      <h3 className="text-sm font-semibold text-gray-900 mb-2">Timing</h3>
-                      <p className="text-gray-700">
-                        {opportunity.start_time} - {opportunity.end_time}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredOpportunities.map(opportunity => (
+              <OpportunityCard
+                key={opportunity._id}
+                opportunity={opportunity}
+                onApply={handleApply}
+                isLoggedIn={isLoggedIn}
+              />
             ))}
           </div>
         )}
-      </main>
-
-      <PostOpportunityModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSubmit={handleAddOpportunity}
-      />
+      </div>
       
-      <ApplicationModal
-        isOpen={isApplyModalOpen}
-        onClose={() => setIsApplyModalOpen(false)}
-        opportunity={selectedOpportunity}
-      />
+      {isLoggedIn && (
+        <>
+          <PostOpportunityModal
+            isOpen={showPostModal}
+            onClose={() => setShowPostModal(false)}
+            onSubmit={handleOpportunityAdded}
+          />
+          
+          <ApplicationModal
+            isOpen={showApplicationModal}
+            onClose={() => setShowApplicationModal(false)}
+            opportunity={selectedOpportunity}
+          />
+        </>
+      )}
     </div>
   );
 };
 
-export default Opportunities;
+export default OpportunitiesPage;

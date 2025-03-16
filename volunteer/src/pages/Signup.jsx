@@ -16,10 +16,18 @@ const Signup = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate passwords match
+    if (formData.password !== formData.confirm_password) {
+      setError('Passwords do not match');
+      return;
+    }
+    
     setLoading(true);
     
     try {
-      const response = await fetch('http://localhost:5000/api/users/login', {
+      // Changed endpoint to signup instead of login
+      const response = await fetch('http://localhost:5000/api/users/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -28,11 +36,11 @@ const Signup = () => {
       });
       
       const data = await response.json();
-      console.log('Login response:', data);
+      console.log('Signup response:', data);
       
       if (response.ok) {
-        // Login successful
-        console.log('Login successful:', data);
+        // Signup successful
+        console.log('Signup successful:', data);
         
         // Store token and user ID in localStorage
         if (data.token) {
@@ -48,12 +56,12 @@ const Signup = () => {
         navigate('/profile');
         console.log('Navigation called');
       } else {
-        // Login failed
-        setError(data.message || 'Invalid credentials');
+        // Signup failed
+        setError(data.message || 'Registration failed');
       }
     } catch (err) {
       setError('Error connecting to server');
-      console.error('Login error:', err);
+      console.error('Signup error:', err);
     } finally {
       setLoading(false);
     }
