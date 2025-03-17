@@ -42,7 +42,7 @@ const Profile = () => {
         }
         
         // Fetch user data from API
-        const url = `http://localhost:5000/api/users/${userId}`;
+        const url = `http://localhost:5001/api/users/${userId}`;
         console.log('Fetching profile from:', url);
         
         const response = await fetch(url, {

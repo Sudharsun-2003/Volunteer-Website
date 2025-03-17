@@ -5,7 +5,7 @@ import Footer from './components/Footer';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import Opportunities from './pages/Opportunities';
+import Opportunities from './pages/Opportunities'
 import Profile from './pages/Profile';
 
 const App = () => {
@@ -19,6 +19,7 @@ const App = () => {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/opportunities" element={<Opportunities />} />
+            
             <Route path="/profile" element={<Profile />} />
           </Routes>
         </main>
