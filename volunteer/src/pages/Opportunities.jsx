@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaMapMarkerAlt, FaCalendarAlt, FaBuilding, FaUsers, FaSearch, FaClock, FaHeart, FaPlus } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaCalendarAlt, FaBuilding, FaUsers, FaSearch, FaClock, FaHeart, FaPlus, FaFilter } from 'react-icons/fa';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import PostOpportunityModal from '../page_components/OpportunitiesPage/PostOpportunityModal';
@@ -44,6 +44,9 @@ const OpportunityCard = ({ opportunity, onApply, isLoggedIn }) => {
         <p className="flex items-center text-gray-600 mb-2">
           <FaMapMarkerAlt className="mr-2" />
           {opportunity.location}
+          {opportunity.address && opportunity.address.district && (
+            <span className="ml-1 text-sm text-gray-500">({opportunity.address.district})</span>
+          )}
         </p>
         <p className="flex items-center text-gray-600 mb-2">
           <FaCalendarAlt className="mr-2" />
@@ -85,10 +88,12 @@ const OpportunitiesPage = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
+  const [districtFilter, setDistrictFilter] = useState('All');
   const [showPostModal, setShowPostModal] = useState(false);
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
   const [showApplicationModal, setShowApplicationModal] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     // Check if user is logged in
@@ -100,7 +105,7 @@ const OpportunitiesPage = () => {
 
   useEffect(() => {
     filterOpportunities();
-  }, [searchTerm, categoryFilter, opportunities]);
+  }, [searchTerm, categoryFilter, districtFilter, opportunities]);
 
   const fetchOpportunities = async () => {
     try {
@@ -135,6 +140,15 @@ const OpportunitiesPage = () => {
       filtered = filtered.filter(item => item.category === categoryFilter);
     }
     
+    // Filter by district
+    if (districtFilter !== 'All') {
+      filtered = filtered.filter(item => 
+        item.address && 
+        item.address.district && 
+        item.address.district === districtFilter
+      );
+    }
+    
     setFilteredOpportunities(filtered);
   };
 
@@ -162,7 +176,36 @@ const OpportunitiesPage = () => {
     fetchOpportunities(); // Refresh the list
   };
 
+  const toggleFilters = () => {
+    setShowFilters(!showFilters);
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setCategoryFilter('All');
+    setDistrictFilter('All');
+  };
+
   const categories = ['All', 'Environment', 'Community', 'Education', 'Healthcare', 'Social Work'];
+  
+  // List of all Tamil Nadu districts
+  const tamilNaduDistricts = [
+    "Ariyalur", "Chennai", "Coimbatore", "Cuddalore", "Dharmapuri", 
+    "Dindigul", "Erode", "Kallakurichi", "Kanchipuram", "Kanyakumari", 
+    "Karur", "Krishnagiri", "Madurai", "Mayiladuthurai", "Nagapattinam", 
+    "Namakkal", "Nilgiris", "Perambalur", "Pudukkottai", "Ramanathapuram", 
+    "Ranipet", "Salem", "Sivaganga", "Tenkasi", "Thanjavur", 
+    "Theni", "Thoothukudi", "Tiruchirappalli", "Tirunelveli", "Tirupathur", 
+    "Tiruppur", "Tiruvallur", "Tiruvannamalai", "Tiruvarur", "Vellore", 
+    "Viluppuram", "Virudhunagar"
+  ];
+
+  // Get unique districts from opportunities data
+  const availableDistricts = ['All', ...new Set(
+    opportunities
+      .filter(opp => opp.address && opp.address.district)
+      .map(opp => opp.address.district)
+  )].sort();
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -178,28 +221,108 @@ const OpportunitiesPage = () => {
         </div>
         
         <div className="bg-white rounded-xl shadow-md p-6 mb-8">
-          <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
-            <div className="flex-1 relative">
-              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search opportunities..."
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+          <div className="flex flex-col space-y-4">
+            <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
+              <div className="flex-1 relative">
+                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search opportunities..."
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <button
+                onClick={toggleFilters}
+                className="py-3 px-6 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 flex items-center justify-center"
+              >
+                <FaFilter className="mr-2" />
+                Filters {showFilters ? '▲' : '▼'}
+              </button>
             </div>
-            <select
-              className="py-3 px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-            >
-              {categories.map(category => (
-                <option key={category} value={category}>{category}</option>
-              ))}
-            </select>
+            
+            {showFilters && (
+              <div className="p-4 border border-gray-200 rounded-lg mt-4 bg-gray-50">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                    <select
+                      className="w-full py-3 px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      value={categoryFilter}
+                      onChange={(e) => setCategoryFilter(e.target.value)}
+                    >
+                      {categories.map(category => (
+                        <option key={category} value={category}>{category}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">District</label>
+                    <select
+                      className="w-full py-3 px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      value={districtFilter}
+                      onChange={(e) => setDistrictFilter(e.target.value)}
+                    >
+                      <option value="All">All Districts</option>
+                      {tamilNaduDistricts.map(district => (
+                        <option key={district} value={district}>{district}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      onClick={handleClearFilters}
+                      className="w-full py-3 px-4 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 focus:ring-2 focus:ring-blue-500 transition-colors duration-200"
+                    >
+                      Clear Filters
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
+        
+        {/* Filter summary */}
+        {(categoryFilter !== 'All' || districtFilter !== 'All' || searchTerm) && (
+          <div className="flex flex-wrap items-center gap-2 mb-4 text-sm">
+            <span className="text-gray-700">Filters:</span>
+            {searchTerm && (
+              <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full flex items-center">
+                Search: "{searchTerm}"
+                <button 
+                  className="ml-2 text-blue-600"
+                  onClick={() => setSearchTerm('')}
+                >
+                  &times;
+                </button>
+              </span>
+            )}
+            {categoryFilter !== 'All' && (
+              <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full flex items-center">
+                Category: {categoryFilter}
+                <button 
+                  className="ml-2 text-blue-600"
+                  onClick={() => setCategoryFilter('All')}
+                >
+                  &times;
+                </button>
+              </span>
+            )}
+            {districtFilter !== 'All' && (
+              <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full flex items-center">
+                District: {districtFilter}
+                <button 
+                  className="ml-2 text-blue-600"
+                  onClick={() => setDistrictFilter('All')}
+                >
+                  &times;
+                </button>
+              </span>
+            )}
+          </div>
+        )}
         
         {loading ? (
           <div className="flex justify-center items-center h-64">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiUser, FiMail, FiMapPin, FiAward, FiClock, FiHeart, FiCalendar, FiEdit, FiMenu, FiX, FiChevronRight } from 'react-icons/fi';
+import UserOpportunities from '../page_components/OpportunitiesPage/UserOpportunities';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ const Profile = () => {
     skill: '',
     userid: '',
     created_at: '',
+    updated_at: '',
     stats: {
       totalHours: 0,
       opportunitiesCompleted: 0,
@@ -21,12 +23,12 @@ const Profile = () => {
       upcomingEvents: 0
     },
     achievements: [],
-    completedOpportunities: [],
+    applications: [],
     upcomingOpportunities: []
   });
 
   useEffect(() => {
-    const fetchUserProfile = async () => {
+    const fetchUserData = async () => {
       try {
         // Get token and userId from localStorage
         const token = localStorage.getItem('token');
@@ -41,48 +43,125 @@ const Profile = () => {
           return;
         }
         
-        // Fetch user data from API
-        const url = `http://localhost:5001/api/users/${userId}`;
-        console.log('Fetching profile from:', url);
+        // Fetch user profile data
+        const profileUrl = `http://localhost:5001/api/users/${userId}`;
+        console.log('Fetching profile from:', profileUrl);
         
-        const response = await fetch(url, {
+        const profileResponse = await fetch(profileUrl, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
         
-        if (!response.ok) {
-          const errorData = await response.json();
+        if (!profileResponse.ok) {
+          const errorData = await profileResponse.json();
           console.error('API error response:', errorData);
-          throw new Error(`Failed to fetch profile data: ${errorData.message || response.statusText}`);
+          throw new Error(`Failed to fetch profile data: ${errorData.message || profileResponse.statusText}`);
         }
         
-        const userData = await response.json();
+        const userData = await profileResponse.json();
         console.log('User data received:', userData);
         
-        // Format the data for our profile component
-        setProfile({
-          ...userData,
-          stats: {
-            totalHours: 0,
-            opportunitiesCompleted: 0,
-            organizationsHelped: 0,
-            upcomingEvents: 0
-          },
-          achievements: [],
-          completedOpportunities: [],
-          upcomingOpportunities: []
+        // Fetch user applications
+        const applicationsUrl = `http://localhost:5001/api/applications/user-applications/${userId}`;
+        console.log('Fetching applications from:', applicationsUrl);
+        
+        const applicationsResponse = await fetch(applicationsUrl, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
         });
+        
+        let applications = [];
+        let upcomingOpportunities = [];
+        
+        if (applicationsResponse.ok) {
+          const applicationsData = await applicationsResponse.json();
+          console.log('Applications data received:', applicationsData);
+          
+          // Process applications to separate past and upcoming opportunities
+          if (applicationsData.applications && applicationsData.applications.length > 0) {
+            applications = applicationsData.applications.map(app => ({
+              id: app._id,
+              title: app.opportunityTitle || (app.opportunityId ? app.opportunityId.title : 'Unnamed Opportunity'),
+              category: app.opportunityCategory || (app.opportunityId ? app.opportunityId.category : 'Uncategorized'),
+              status: app.status,
+              date: formatDate(app.appliedAt),
+              rawDate: app.appliedAt
+            }));
+            
+            // Calculate stats
+            const stats = {
+              totalHours: 0,
+              opportunitiesCompleted: applications.filter(app => app.status === 'accepted').length,
+              organizationsHelped: new Set(applications.filter(app => app.status === 'accepted').map(app => app.title)).size,
+              upcomingEvents: 0
+            };
+            
+            // Get upcoming opportunities based on event dates
+            // In a real scenario, you would compare with the event date from the opportunity model
+            const today = new Date();
+            
+            // For this example, we'll use applications with status 'accepted' as upcoming
+            upcomingOpportunities = applications
+              .filter(app => app.status === 'accepted')
+              .map(app => ({
+                id: app.id,
+                title: app.title,
+                organization: app.category,
+                date: app.date,
+                status: 'Confirmed'
+              }));
+              
+            stats.upcomingEvents = upcomingOpportunities.length;
+            
+            // Format the data for our profile component
+            setProfile({
+              ...userData,
+              stats,
+              achievements: [],
+              applications,
+              upcomingOpportunities
+            });
+          } else {
+            setProfile({
+              ...userData,
+              stats: {
+                totalHours: 0,
+                opportunitiesCompleted: 0,
+                organizationsHelped: 0,
+                upcomingEvents: 0
+              },
+              achievements: [],
+              applications: [],
+              upcomingOpportunities: []
+            });
+          }
+        } else {
+          console.log('No applications found or error fetching applications');
+          setProfile({
+            ...userData,
+            stats: {
+              totalHours: 0,
+              opportunitiesCompleted: 0,
+              organizationsHelped: 0,
+              upcomingEvents: 0
+            },
+            achievements: [],
+            applications: [],
+            upcomingOpportunities: []
+          });
+        }
         
         setLoading(false);
       } catch (err) {
-        console.error('Error fetching profile:', err);
+        console.error('Error fetching data:', err);
         setError(err.message);
         setLoading(false);
       }
     };
     
-    fetchUserProfile();
+    fetchUserData();
   }, [navigate]);
 
   const toggleSidebar = () => {
@@ -106,6 +185,23 @@ const Profile = () => {
     
     // Navigate to login page
     navigate('/login');
+  };
+
+  // Function to get status color
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'accepted':
+        return 'bg-green-50 text-green-700 border border-green-100';
+      case 'rejected':
+        return 'bg-red-50 text-red-700 border border-red-100';
+      default: // pending
+        return 'bg-yellow-50 text-yellow-700 border border-yellow-100';
+    }
+  };
+
+  // Format status for display
+  const formatStatus = (status) => {
+    return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
   if (loading) {
@@ -174,7 +270,11 @@ const Profile = () => {
                   <FiUser className={sidebarOpen ? 'mr-3' : ''} />
                   {sidebarOpen && <span>Profile</span>}
                 </button>
-                <button className={`w-full flex items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md ${!sidebarOpen && 'justify-center'}`}>
+                
+                <button 
+                  onClick={() => navigate('/oopportunities')}
+                  className={`w-full flex items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md ${!sidebarOpen && 'justify-center'}`}
+                >
                   <FiHeart className={sidebarOpen ? 'mr-3' : ''} />
                   {sidebarOpen && <span>Opportunities</span>}
                 </button>
@@ -316,24 +416,25 @@ const Profile = () => {
 
                 <div className="bg-white rounded-lg shadow-sm p-5">
                   <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-base font-semibold text-gray-900">Recent Opportunities</h3>
+                    <h3 className="text-base font-semibold text-gray-900">Applications</h3>
                     <button className="text-blue-600 hover:text-blue-800 text-xs flex items-center">
                       Find opportunities <FiChevronRight size={14} className="ml-1" />
                     </button>
                   </div>
-                  {profile.completedOpportunities.length > 0 ? (
+                  {profile.applications.length > 0 ? (
                     <div className="space-y-3">
-                     {profile.completedOpportunities.map((opportunity) => (
-                        <div key={opportunity.id} className="border-b pb-3 last:border-0 last:pb-0">
+                     {profile.applications.map((application) => (
+                        <div key={application.id} className="border-b pb-3 last:border-0 last:pb-0">
                           <div className="flex justify-between items-start">
                             <div>
-                              <h4 className="text-sm font-medium text-gray-900">{opportunity.title}</h4>
-                              <p className="text-xs text-gray-600">{opportunity.organization}</p>
-                              <p className="text-xs text-gray-500 mt-1">{opportunity.impact}</p>
+                              <h4 className="text-sm font-medium text-gray-900">{application.title}</h4>
+                              <p className="text-xs text-gray-600">{application.category}</p>
                             </div>
                             <div className="text-right">
-                              <span className="text-xs font-medium text-gray-900">{opportunity.hours} hours</span>
-                              <p className="text-xs text-gray-500">{opportunity.date}</p>
+                              <span className={`text-xs px-2 py-0.5 rounded ${getStatusColor(application.status)}`}>
+                                {formatStatus(application.status)}
+                              </span>
+                              <p className="text-xs text-gray-500 mt-1">{application.date}</p>
                             </div>
                           </div>
                         </div>
@@ -341,7 +442,7 @@ const Profile = () => {
                     </div>
                   ) : (
                     <div className="text-center py-6">
-                      <p className="text-gray-500 text-sm">No completed opportunities yet.</p>
+                      <p className="text-gray-500 text-sm">No applications yet.</p>
                       <button className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700">
                         Find your first opportunity
                       </button>
@@ -368,11 +469,7 @@ const Profile = () => {
                           <p className="text-xs text-gray-600">{opportunity.organization}</p>
                           <div className="mt-1.5 flex justify-between items-center">
                             <span className="text-xs text-gray-500">{opportunity.date}</span>
-                            <span className={`text-xs px-2 py-0.5 rounded ${
-                              opportunity.status === 'Confirmed' 
-                                ? 'bg-green-50 text-green-700 border border-green-100' 
-                                : 'bg-yellow-50 text-yellow-700 border border-yellow-100'
-                            }`}>
+                            <span className="text-xs px-2 py-0.5 rounded bg-green-50 text-green-700 border border-green-100">
                               {opportunity.status}
                             </span>
                           </div>
@@ -431,7 +528,7 @@ const Profile = () => {
                     
                     <div>
                       <p className="text-xs text-gray-500">Last Updated</p>
-                      <p className="text-sm font-medium">{formatDate(profile.updated_at)}</p>
+                      <p className="text-sm font-medium">{profile.updated_at ? formatDate(profile.updated_at) : formatDate(profile.created_at)}</p>
                     </div>
                     
                     <div className="pt-3">
