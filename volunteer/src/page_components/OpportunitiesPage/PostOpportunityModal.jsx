@@ -75,6 +75,15 @@ const PostOpportunityModal = ({ isOpen, onClose, onSubmit }) => {
         return;
       }
       
+      // Validate time - make sure end time is after start time
+      const startTime = formData.start_time;
+      const endTime = formData.end_time;
+      if (startTime && endTime && startTime >= endTime) {
+        setError('End time must be after start time.');
+        setIsSubmitting(false);
+        return;
+      }
+      
       // Create a FormData object to send the multipart/form-data
       const formDataToSend = new FormData();
       
@@ -150,9 +159,6 @@ const PostOpportunityModal = ({ isOpen, onClose, onSubmit }) => {
         )}
         
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Form fields remain the same - only the submit handler changed */}
-          {/* ... rest of your form code ... */}
-          {/* For brevity, I've omitted the form fields since they remain unchanged */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
@@ -406,46 +412,52 @@ const PostOpportunityModal = ({ isOpen, onClose, onSubmit }) => {
                 className="flex flex-col items-center justify-center cursor-pointer"
               >
                 {imagePreview ? (
-  <div className="relative w-full">
-    <img 
-      src={imagePreview} 
-      alt="Opportunity preview" 
-      className="h-48 w-full object-cover rounded-lg"
-    />
-    <button 
-      type="button"
-      onClick={() => {
-        setImageFile(null);
-        setImagePreview(null);
-      }}
-      className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
-      disabled={isSubmitting}
-    >
-      <FaTimes size={16} />
-    </button>
-  </div>
-) : (
-  <div className="text-center py-8">
-    <p className="text-gray-500 mb-2">Click to upload an image</p>
-    <p className="text-gray-400 text-sm">PNG, JPG, JPEG up to 5MB</p>
-  </div>
-)}
+                  <div className="relative w-full">
+                    <img 
+                      src={imagePreview} 
+                      alt="Opportunity preview" 
+                      className="h-48 w-full object-cover rounded-lg"
+                    />
+                    <button 
+                      type="button"
+                      className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
+                      onClick={() => {
+                        setImageFile(null);
+                        setImagePreview(null);
+                      }}
+                      disabled={isSubmitting}
+                    >
+                      <FaTimes size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex flex-col items-center justify-center">
+                      <p className="mb-2 text-sm text-gray-500">
+                        <span className="font-semibold">Click to upload</span> or drag and drop
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        PNG, JPG or JPEG (MAX. 5MB)
+                      </p>
+                    </div>
+                  </>
+                )}
               </label>
             </div>
           </div>
           
-          <div className="flex justify-end space-x-4">
+          <div className="flex justify-end">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
+              className="px-6 py-2 mr-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
               disabled={isSubmitting}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-300"
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500"
               disabled={isSubmitting}
             >
               {isSubmitting ? 'Submitting...' : 'Post Opportunity'}

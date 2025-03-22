@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiUser, FiMail, FiMapPin, FiAward, FiClock, FiHeart, FiCalendar, FiEdit, FiMenu, FiX, FiChevronRight } from 'react-icons/fi';
-import UserOpportunities from '../page_components/OpportunitiesPage/UserOpportunities';
-
+// import UserOpportunities from '../page_components/OpportunitiesPage/UserOpportunities';
+import OpportunityDetails from '../page_components/Profile/OpportunityDetails';
 const Profile = () => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -272,7 +272,7 @@ const Profile = () => {
                 </button>
                 
                 <button 
-                  onClick={() => navigate('/oopportunities')}
+                  onClick={() => navigate('/opportunities/details')}
                   className={`w-full flex items-center px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-md ${!sidebarOpen && 'justify-center'}`}
                 >
                   <FiHeart className={sidebarOpen ? 'mr-3' : ''} />

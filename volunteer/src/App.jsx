@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Opportunities from './pages/Opportunities'
 import Profile from './pages/Profile';
+import OpportunityDetails from './page_components/Profile/OpportunityDetails';
 // import UserOpportunities from './page_components/OpportunitiesPage/UserOpportunities';
 
 
@@ -21,7 +22,7 @@ const App = () => {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/opportunities" element={<Opportunities />} />
-            {/* <Route path="/oopportunities" element={<UserOpportunities />} /> */}
+            <Route path="/opportunities/details" element={<OpportunityDetails />} />
             {/* <Route path="/opportunity/:id" element={<OpportunityDetails />} />
             <Route path="/opportunity/:id/summary" element={<OpportunitySummary />} /> */}
             <Route path="/profile" element={<Profile />} />
