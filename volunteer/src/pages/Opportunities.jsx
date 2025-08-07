@@ -1,45 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { FaMapMarkerAlt, FaCalendarAlt, FaBuilding, FaUsers, FaSearch, FaClock, FaHeart, FaPlus, FaFilter, FaMapPin, FaLocationArrow } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaCalendarAlt, FaBuilding, FaUsers, FaSearch, FaClock, FaHeart, FaPlus, FaFilter, FaMapPin } from 'react-icons/fa';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import PostOpportunityModal from '../page_components/OpportunitiesPage/PostOpportunityModal';
 import ApplicationModal from '../page_components/OpportunitiesPage/ApplOpportunities';
 
-// Function to calculate distance between two points using Haversine formula
-const calculateDistance = (lat1, lon1, lat2, lon2) => {
-  const R = 6371; // Radius of the earth in km
-  const dLat = deg2rad(lat2 - lat1);
-  const dLon = deg2rad(lon2 - lon1);
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2); 
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-  const distance = R * c; // Distance in km
-  return distance;
-};
-
-const deg2rad = (deg) => {
-  return deg * (Math.PI/180);
-};
-
-const OpportunityCard = ({ opportunity, onApply, isLoggedIn, userLocation }) => {
+const OpportunityCard = ({ opportunity, onApply, isLoggedIn }) => {
   const navigate = useNavigate();
   const [showAddressDetails, setShowAddressDetails] = useState(false);
-  const [distance, setDistance] = useState(null);
-
-  useEffect(() => {
-    // Calculate distance if both user location and opportunity location are available
-    if (userLocation && opportunity.coordinates) {
-      const dist = calculateDistance(
-        userLocation.latitude,
-        userLocation.longitude,
-        opportunity.coordinates.latitude,
-        opportunity.coordinates.longitude
-      );
-      setDistance(dist.toFixed(1));
-    }
-  }, [userLocation, opportunity]);
 
   const handleApplyClick = () => {
     if (isLoggedIn) {
@@ -86,14 +54,6 @@ const OpportunityCard = ({ opportunity, onApply, isLoggedIn, userLocation }) => 
         <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-medium ${getStatusStyle(opportunity.status)}`}>
           {opportunity.status}
         </div>
-        
-        {/* Distance badge if available */}
-        {distance && (
-          <div className="absolute bottom-4 right-4 px-3 py-1 bg-white bg-opacity-90 rounded-full text-xs font-medium flex items-center">
-            <FaLocationArrow className="mr-1 text-blue-500" />
-            {distance} km away
-          </div>
-        )}
       </div>
       <div className="p-6">
         <div className="flex items-center mb-2">
@@ -179,15 +139,11 @@ const OpportunitiesPage = () => {
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [districtFilter, setDistrictFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
-  const [radiusFilter, setRadiusFilter] = useState(0); // 0 means no filter
   const [showPostModal, setShowPostModal] = useState(false);
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
   const [showApplicationModal, setShowApplicationModal] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [userLocation, setUserLocation] = useState(null);
-  const [locationLoading, setLocationLoading] = useState(false);
-  const [locationError, setLocationError] = useState(null);
 
   useEffect(() => {
     // Check if user is logged in
@@ -199,28 +155,14 @@ const OpportunitiesPage = () => {
 
   useEffect(() => {
     filterOpportunities();
-  }, [searchTerm, categoryFilter, districtFilter, statusFilter, radiusFilter, userLocation, opportunities]);
+  }, [searchTerm, categoryFilter, districtFilter, statusFilter, opportunities]);
 
   const fetchOpportunities = async () => {
     try {
       setLoading(true);
       const response = await axios.get('http://localhost:5001/api/opportunities/');
-      
-      // Add mock coordinates for testing (you should get real coordinates from your backend)
-      const opportunitiesWithCoordinates = response.data.map(opp => {
-        // You would get these coordinates from your database in production
-        // This is just a mock example
-        if (!opp.coordinates) {
-          opp.coordinates = {
-            latitude: 11.1271 + (Math.random() * 0.4 - 0.2), // Chennai area +/- 0.2 degrees
-            longitude: 78.6569 + (Math.random() * 0.4 - 0.2)  // Tamil Nadu center +/- 0.2 degrees
-          };
-        }
-        return opp;
-      });
-      
-      setOpportunities(opportunitiesWithCoordinates);
-      setFilteredOpportunities(opportunitiesWithCoordinates);
+      setOpportunities(response.data);
+      setFilteredOpportunities(response.data);
     } catch (error) {
       console.error('Error fetching opportunities:', error);
       setError('Failed to load opportunities. Please try again later.');
@@ -262,71 +204,7 @@ const OpportunitiesPage = () => {
       filtered = filtered.filter(item => item.status === statusFilter);
     }
     
-    // Filter by radius if user location is available and radius filter is active
-    if (userLocation && radiusFilter > 0) {
-      filtered = filtered.filter(item => {
-        if (item.coordinates) {
-          const distance = calculateDistance(
-            userLocation.latitude,
-            userLocation.longitude,
-            item.coordinates.latitude,
-            item.coordinates.longitude
-          );
-          return distance <= radiusFilter;
-        }
-        return false; // Filter out items without coordinates
-      });
-      
-      // Sort by distance
-      filtered.sort((a, b) => {
-        const distanceA = calculateDistance(
-          userLocation.latitude,
-          userLocation.longitude,
-          a.coordinates.latitude,
-          a.coordinates.longitude
-        );
-        
-        const distanceB = calculateDistance(
-          userLocation.latitude,
-          userLocation.longitude,
-          b.coordinates.latitude,
-          b.coordinates.longitude
-        );
-        
-        return distanceA - distanceB;
-      });
-    }
-    
     setFilteredOpportunities(filtered);
-  };
-
-  const getUserLocation = () => {
-    if (!navigator.geolocation) {
-      setLocationError('Geolocation is not supported by your browser');
-      return;
-    }
-    
-    setLocationLoading(true);
-    setLocationError(null);
-    
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        setUserLocation({ latitude, longitude });
-        setRadiusFilter(20); // Set to 20km by default when location is obtained
-        setLocationLoading(false);
-      },
-      (error) => {
-        console.error('Error getting location:', error);
-        setLocationError('Unable to get your location. Please check your location permissions.');
-        setLocationLoading(false);
-      },
-      { 
-        enableHighAccuracy: true,
-        timeout: 5000,
-        maximumAge: 0
-      }
-    );
   };
 
   const handleApply = (opportunity) => {
@@ -362,16 +240,10 @@ const OpportunitiesPage = () => {
     setCategoryFilter('All');
     setDistrictFilter('All');
     setStatusFilter('All');
-    setRadiusFilter(0);
-  };
-
-  const disableLocationFilter = () => {
-    setRadiusFilter(0);
   };
 
   const categories = ['All', 'Environment', 'Community', 'Education', 'Healthcare', 'Social Work'];
   const statusOptions = ['All', 'Open', 'Filled', 'Completed', 'Canceled'];
-  const radiusOptions = [5, 10, 15, 20, 30, 50];
   
   // List of all Tamil Nadu districts
   const tamilNaduDistricts = [
@@ -411,35 +283,19 @@ const OpportunitiesPage = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <div className="flex space-x-2">
-                <button
-                  onClick={getUserLocation}
-                  disabled={locationLoading}
-                  className={`py-3 px-6 rounded-lg flex items-center justify-center transition-colors duration-200 ${userLocation ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
-                >
-                  <FaLocationArrow className="mr-2" />
-                  {locationLoading ? 'Getting location...' : (userLocation ? 'Location Active' : 'Use My Location')}
-                </button>
-                <button
-                  onClick={toggleFilters}
-                  className="py-3 px-6 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 flex items-center justify-center"
-                >
-                  <FaFilter className="mr-2" />
-                  Filters {showFilters ? '▲' : '▼'}
-                </button>
-              </div>
+              <button
+                onClick={toggleFilters}
+                className="py-3 px-6 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 flex items-center justify-center"
+              >
+                <FaFilter className="mr-2" />
+                Filters {showFilters ? '▲' : '▼'}
+              </button>
             </div>
-            
-            {locationError && (
-              <div className="mt-2 text-red-600 text-sm">
-                {locationError}
-              </div>
-            )}
             
             {showFilters && (
               <div className="p-4 border border-gray-200 rounded-lg mt-4 bg-gray-50">
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                  <div>
+                <div className="flex flex-wrap gap-4">
+                  <div className="flex-1 min-w-[200px]">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
                     <select
                       className="w-full py-3 px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -451,7 +307,7 @@ const OpportunitiesPage = () => {
                       ))}
                     </select>
                   </div>
-                  <div>
+                  <div className="flex-1 min-w-[200px]">
                     <label className="block text-sm font-medium text-gray-700 mb-2">District</label>
                     <select
                       className="w-full py-3 px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -464,7 +320,7 @@ const OpportunitiesPage = () => {
                       ))}
                     </select>
                   </div>
-                  <div>
+                  <div className="flex-1 min-w-[200px]">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                     <select
                       className="w-full py-3 px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -475,27 +331,6 @@ const OpportunitiesPage = () => {
                         <option key={status} value={status}>{status}</option>
                       ))}
                     </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Distance (km)
-                    </label>
-                    <select
-                      className="w-full py-3 px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      value={radiusFilter}
-                      onChange={(e) => setRadiusFilter(Number(e.target.value))}
-                      disabled={!userLocation}
-                    >
-                      <option value="0">No limit</option>
-                      {radiusOptions.map(radius => (
-                        <option key={radius} value={radius}>Within {radius} km</option>
-                      ))}
-                    </select>
-                    {!userLocation && (
-                      <div className="mt-1 text-xs text-gray-500">
-                        Click "Use My Location" to enable
-                      </div>
-                    )}
                   </div>
                   <div className="flex items-end">
                     <button
@@ -512,7 +347,7 @@ const OpportunitiesPage = () => {
         </div>
         
         {/* Filter summary */}
-        {(categoryFilter !== 'All' || districtFilter !== 'All' || statusFilter !== 'All' || radiusFilter > 0 || searchTerm) && (
+        {(categoryFilter !== 'All' || districtFilter !== 'All' || statusFilter !== 'All' || searchTerm) && (
           <div className="flex flex-wrap items-center gap-2 mb-4 text-sm">
             <span className="text-gray-700">Active Filters:</span>
             {searchTerm && (
@@ -559,17 +394,6 @@ const OpportunitiesPage = () => {
                 </button>
               </span>
             )}
-            {radiusFilter > 0 && userLocation && (
-              <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full flex items-center">
-                Within {radiusFilter} km
-                <button 
-                  className="ml-2 text-green-600"
-                  onClick={disableLocationFilter}
-                >
-                  &times;
-                </button>
-              </span>
-            )}
           </div>
         )}
         
@@ -594,7 +418,6 @@ const OpportunitiesPage = () => {
                 opportunity={opportunity}
                 onApply={handleApply}
                 isLoggedIn={isLoggedIn}
-                userLocation={userLocation}
               />
             ))}
           </div>
