@@ -160,7 +160,7 @@ const OpportunitiesPage = () => {
   const fetchOpportunities = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:5001/api/opportunities/');
+      const response = await axios.get('https://volunteer-backend-egrn.onrender.com/api/opportunities/');
       setOpportunities(response.data);
       setFilteredOpportunities(response.data);
     } catch (error) {

@@ -44,7 +44,7 @@ const Profile = () => {
         }
         
         // Fetch user profile data
-        const profileUrl = `http://localhost:5001/api/users/${userId}`;
+        const profileUrl = `https://volunteer-backend-egrn.onrender.com/api/users/${userId}`;
         console.log('Fetching profile from:', profileUrl);
         
         const profileResponse = await fetch(profileUrl, {
@@ -63,7 +63,7 @@ const Profile = () => {
         console.log('User data received:', userData);
         
         // Fetch user applications
-        const applicationsUrl = `http://localhost:5001/api/applications/user-applications/${userId}`;
+        const applicationsUrl = `https://volunteer-backend-egrn.onrender.com/api/applications/user-applications/${userId}`;
         console.log('Fetching applications from:', applicationsUrl);
         
         const applicationsResponse = await fetch(applicationsUrl, {

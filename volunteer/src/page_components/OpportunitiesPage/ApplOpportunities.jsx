@@ -41,7 +41,7 @@ const ApplicationModal = ({ isOpen, onClose, opportunity }) => {
       formDataObj.append('idProofImage', idProofImage);
       
       // Send the application to the API with the auth token
-      const response = await axios.post('http://localhost:5001/api/applications/apply', formDataObj, {
+      const response = await axios.post('https://volunteer-backend-egrn.onrender.com/api/applications/apply', formDataObj, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'multipart/form-data'

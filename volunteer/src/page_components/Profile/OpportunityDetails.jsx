@@ -26,7 +26,7 @@ const fetchOpportunityDetails = async () => {
     }
     
     // Fetch opportunity details
-    const opportunityUrl = `http://localhost:5001/api/opportunities/${opportunityId}`;
+    const opportunityUrl = `https://volunteer-backend-egrn.onrender.com/api/opportunities/${opportunityId}`;
     const opportunityResponse = await fetch(opportunityUrl, {
       headers: {
         'Authorization': `Bearer ${token}`
@@ -77,7 +77,7 @@ const fetchOpportunityDetails = async () => {
                            status === 'rejected' ? 'Rejected' : 'Pending';
       
       // Update applicant status using the update application status endpoint
-      const updateUrl = `http://localhost:5001/api/opportunities/${opportunityId}`;
+      const updateUrl = `https://volunteer-backend-egrn.onrender.com/api/opportunities/${opportunityId}`;
       const updateResponse = await fetch(updateUrl, {
         method: 'PUT', // Note: backend uses PUT not PATCH
         headers: {
